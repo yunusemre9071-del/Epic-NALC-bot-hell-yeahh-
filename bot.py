@@ -1,0 +1,138 @@
+from dotenv import load_dotenv
+import os
+TOKEN = os.getenv("DISCORD_TOKEN")
+load_dotenv()
+import random
+import discord
+from discord.ext import tasks, commands
+from discord import app_commands
+
+from config import *
+
+intents = discord.Intents.default()
+intents.members = True
+
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+status_message = None
+goal_announced = False
+
+IRS_MESSAGES = [
+    "The IRS found us.",
+    "The IRS is typing...",
+    "Good news: I am alive. Bad news: I owe taxes.",
+    "The member count keeps increasing. So does my tax liability.",
+    "I accidentally claimed the member count as a dependent.",
+    "I have legal representation.",
+    "The IRS has better legal representation.",
+    "Please do not tell the IRS about the member count."
+]
+
+# ----------------------------
+# READY EVENT
+# ----------------------------
+@bot.event
+async def on_ready():
+    print(f"Logged in as {bot.user}")
+    await bot.tree.sync()
+    update_goal.start()
+
+
+# ----------------------------
+# MEMBER GOAL LOOP
+# ----------------------------
+@tasks.loop(minutes=1)
+async def update_goal():
+    global status_message
+    global goal_announced
+
+    guild = bot.get_guild(GUILD_ID)
+    channel = bot.get_channel(CHANNEL_ID)
+
+    if not guild or not channel:
+        return
+
+    members = guild.member_count
+    progress = (members / GOAL) * 100
+
+    embed = discord.Embed(
+        title="📈 Server Member Goal",
+        description=f"**Members:** {members}/{GOAL}\n**Progress:** {progress:.1f}%",
+        color=0xFF7A00
+    )
+
+    embed.set_footer(text=random.choice(IRS_MESSAGES))
+
+    if status_message is None:
+        async for msg in channel.history(limit=50):
+            if msg.author == bot.user:
+                status_message = msg
+                break
+
+    if status_message:
+        try:
+            await status_message.edit(embed=embed)
+        except:
+            status_message = await channel.send(embed=embed)
+    else:
+        status_message = await channel.send(embed=embed)
+
+    if members >= GOAL and not goal_announced:
+        role = guild.get_role(PING_ROLE_ID)
+
+        if role:
+            await channel.send(
+                f"{role.mention} 🎉 Goal reached! We now have **{members}** members!"
+            )
+
+        goal_announced = True
+
+    if members < GOAL:
+        goal_announced = False
+
+    if random.randint(1, 10) == 1:
+        await channel.send(random.choice(IRS_MESSAGES))
+
+
+# ----------------------------
+# /LOG COMMAND
+# ----------------------------
+@bot.tree.command(name="log", description="Log an ended event")
+@app_commands.describe(
+    host="Event host",
+    attendees="Mention attendees (space separated)",
+    picture="Event screenshot"
+)
+async def log(
+    interaction: discord.Interaction,
+    host: discord.Member,
+    attendees: str,
+    picture: discord.Attachment
+):
+    attendee_list = attendees.split()
+
+    embed = discord.Embed(
+        title="Event Log",
+        color=0x00FFAA
+    )
+
+    embed.description = (
+        f"**Host:** {host.mention}\n"
+        f"**Attendees:** {' '.join(attendee_list) if attendee_list else 'None'}"
+    )
+
+    if picture:
+        embed.set_image(url=picture.url)
+
+    await interaction.response.send_message(embed=embed)
+
+
+
+# ----------------------------
+# RUN BOT
+# ----------------------------
+import os
+
+TOKEN = os.getenv("DISCORD_TOKEN")
+
+bot.run(TOKEN)
