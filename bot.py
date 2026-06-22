@@ -5,7 +5,9 @@ import discord
 from discord.ext import tasks, commands
 from discord import app_commands
 
-from config import *
+import os
+
+TOKEN = os.getenv("DISCORD_TOKEN")
 
 intents = discord.Intents.default()
 intents.members = True
