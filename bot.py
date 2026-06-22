@@ -1,7 +1,5 @@
-from dotenv import load_dotenv
-import os
-TOKEN = os.getenv("DISCORD_TOKEN")
-load_dotenv()
+
+import os 
 import random
 import discord
 from discord.ext import tasks, commands
