@@ -1,13 +1,9 @@
-
-import os 
 import random
 import discord
 from discord.ext import tasks, commands
 from discord import app_commands
 
-import os
-
-TOKEN = os.getenv("DISCORD_TOKEN")
+from config import *
 
 intents = discord.Intents.default()
 intents.members = True
@@ -126,46 +122,12 @@ async def log(
 
     await interaction.response.send_message(embed=embed)
 
-# ----------------------------
-# /PING COMMAND
-# ----------------------------
-@bot.tree.command(
-    name="ping",
-    description="Check bot latency"
-)
-async def ping(interaction: discord.Interaction):
 
-    latency = round(bot.latency * 1000)
-
-    await interaction.response.send_message(
-        f"🏓 Pong!\nLatency: `{latency}ms`"
-    )
-
-
-# ----------------------------
-# /IRSLOG COMMAND (JOKE)
-# ----------------------------
-@bot.tree.command(
-    name="logs",
-    description="Log"
-)
-async def irslog(interaction: discord.Interaction):
-
-    file = discord.File(
-        "images/log.jpg",
-        filename="log.jpg"
-    )
-
-    await interaction.response.send_message(
-        "📋 Official Log report:",
-        file=file
-    )
 
 # ----------------------------
 # RUN BOT
 # ----------------------------
 import os
 
-TOKEN = os.getenv("DISCORD_TOKEN")
 
 bot.run(TOKEN)
