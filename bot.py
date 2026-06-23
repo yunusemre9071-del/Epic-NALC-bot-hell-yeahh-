@@ -152,8 +152,8 @@ async def ping(interaction: discord.Interaction):
 async def irslog(interaction: discord.Interaction):
 
     file = discord.File(
-        "images/log.jpg",
-        filename="log.jpg"
+        "images/log.jpeg",
+        filename="log.jpeg"
     )
 
     await interaction.response.send_message(
