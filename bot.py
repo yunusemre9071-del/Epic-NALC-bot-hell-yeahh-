@@ -178,7 +178,8 @@ async def play(interaction: discord.Interaction, song: str):
     if vc.is_playing():
         vc.stop()
 
-    source = discord.FFmpegPCMAudio(songs[song])
+    source = discord.FFmpegPCMAudio(songs[song]) 
+    executable="ffmpeg"
     vc.play(source)
 
     await interaction.followup.send(f"▶️ Now playing **{song}**")
