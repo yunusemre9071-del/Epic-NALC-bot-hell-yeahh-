@@ -129,8 +129,11 @@ def get_songs():
 
 @bot.tree.command(name="join", description="Join your voice channel")
 async def join(interaction: discord.Interaction):
+
+    await interaction.response.defer()
+
     if interaction.user.voice is None:
-        await interaction.response.send_message(
+        await interaction.followup.send(
             "❌ You need to join a voice channel first.",
             ephemeral=True
         )
@@ -143,17 +146,17 @@ async def join(interaction: discord.Interaction):
     else:
         await interaction.user.voice.channel.connect()
 
-    await interaction.response.send_message("✅ Joined your voice channel.")
+    await interaction.followup.send("✅ Joined your voice channel.")
 
-
-@app_commands.describe(song="Name of the song (without .mp3)")
 @bot.tree.command(name="play", description="Play a song from the music folder")
 async def play(interaction: discord.Interaction, song: str):
+
+    await interaction.response.defer()
 
     songs = get_songs()
 
     if song not in songs:
-        await interaction.response.send_message(
+        await interaction.followup.send(
             "❌ Song not found.\nAvailable songs:\n" +
             "\n".join(f"• {s}" for s in songs.keys()),
             ephemeral=True
@@ -164,7 +167,7 @@ async def play(interaction: discord.Interaction, song: str):
 
     if vc is None:
         if interaction.user.voice is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "❌ Join a voice channel first.",
                 ephemeral=True
             )
@@ -178,8 +181,7 @@ async def play(interaction: discord.Interaction, song: str):
     source = discord.FFmpegPCMAudio(songs[song])
     vc.play(source)
 
-    await interaction.response.send_message(f"▶️ Now playing **{song}**")
-
+    await interaction.followup.send(f"▶️ Now playing **{song}**")
 
 @bot.tree.command(name="stop", description="Stop the current song")
 async def stop(interaction: discord.Interaction):
