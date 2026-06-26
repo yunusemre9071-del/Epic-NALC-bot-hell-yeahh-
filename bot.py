@@ -38,61 +38,6 @@ async def on_ready():
     update_goal.start()
 
 
-# ----------------------------
-# MEMBER GOAL LOOP
-# ----------------------------
-@tasks.loop(minutes=1)
-async def update_goal():
-    global status_message
-    global goal_announced
-
-    guild = bot.get_guild(GUILD_ID)
-    channel = bot.get_channel(CHANNEL_ID)
-
-    if not guild or not channel:
-        return
-
-    members = guild.member_count
-    progress = (members / GOAL) * 100
-
-    embed = discord.Embed(
-        title="📈 Server Member Goal",
-        description=f"**Members:** {members}/{GOAL}\n**Progress:** {progress:.1f}%",
-        color=0xFF7A00
-    )
-
-    embed.set_footer(text=random.choice(IRS_MESSAGES))
-
-    if status_message is None:
-        async for msg in channel.history(limit=50):
-            if msg.author == bot.user:
-                status_message = msg
-                break
-
-    if status_message:
-        try:
-            await status_message.edit(embed=embed)
-        except:
-            status_message = await channel.send(embed=embed)
-    else:
-        status_message = await channel.send(embed=embed)
-
-    if members >= GOAL and not goal_announced:
-        role = guild.get_role(PING_ROLE_ID)
-
-        if role:
-            await channel.send(
-                f"{role.mention} 🎉 Goal reached! We now have **{members}** members!"
-            )
-
-        goal_announced = True
-
-    if members < GOAL:
-        goal_announced = False
-
-    if random.randint(1, 10) == 1:
-        await channel.send(random.choice(IRS_MESSAGES))
-
 
 # ----------------------------
 # /LOG COMMAND
@@ -159,6 +104,126 @@ async def irslog(interaction: discord.Interaction):
     await interaction.response.send_message(
         "📋 Official Log report:",
         file=file
+    )
+
+# ----------------------------
+# MUSIC BOT
+# ----------------------------
+
+MUSIC_FOLDER = "music"
+
+
+def get_songs():
+    songs = {}
+
+    if not os.path.exists(MUSIC_FOLDER):
+        os.makedirs(MUSIC_FOLDER)
+
+    for file in os.listdir(MUSIC_FOLDER):
+        if file.lower().endswith(".mp3"):
+            name = os.path.splitext(file)[0]
+            songs[name] = os.path.join(MUSIC_FOLDER, file)
+
+    return songs
+
+
+@bot.tree.command(name="join", description="Join your voice channel")
+async def join(interaction: discord.Interaction):
+    if interaction.user.voice is None:
+        await interaction.response.send_message(
+            "❌ You need to join a voice channel first.",
+            ephemeral=True
+        )
+        return
+
+    vc = interaction.guild.voice_client
+
+    if vc:
+        await vc.move_to(interaction.user.voice.channel)
+    else:
+        await interaction.user.voice.channel.connect()
+
+    await interaction.response.send_message("✅ Joined your voice channel.")
+
+
+@app_commands.describe(song="Name of the song (without .mp3)")
+@bot.tree.command(name="play", description="Play a song from the music folder")
+async def play(interaction: discord.Interaction, song: str):
+
+    songs = get_songs()
+
+    if song not in songs:
+        await interaction.response.send_message(
+            "❌ Song not found.\nAvailable songs:\n" +
+            "\n".join(f"• {s}" for s in songs.keys()),
+            ephemeral=True
+        )
+        return
+
+    vc = interaction.guild.voice_client
+
+    if vc is None:
+        if interaction.user.voice is None:
+            await interaction.response.send_message(
+                "❌ Join a voice channel first.",
+                ephemeral=True
+            )
+            return
+
+        vc = await interaction.user.voice.channel.connect()
+
+    if vc.is_playing():
+        vc.stop()
+
+    source = discord.FFmpegPCMAudio(songs[song])
+    vc.play(source)
+
+    await interaction.response.send_message(f"▶️ Now playing **{song}**")
+
+
+@bot.tree.command(name="stop", description="Stop the current song")
+async def stop(interaction: discord.Interaction):
+    vc = interaction.guild.voice_client
+
+    if vc and vc.is_playing():
+        vc.stop()
+        await interaction.response.send_message("⏹️ Music stopped.")
+    else:
+        await interaction.response.send_message(
+            "Nothing is playing.",
+            ephemeral=True
+        )
+
+
+@bot.tree.command(name="leave", description="Leave the voice channel")
+async def leave(interaction: discord.Interaction):
+    vc = interaction.guild.voice_client
+
+    if vc:
+        await vc.disconnect()
+        await interaction.response.send_message("👋 Left the voice channel.")
+    else:
+        await interaction.response.send_message(
+            "I'm not in a voice channel.",
+            ephemeral=True
+        )
+
+
+@bot.tree.command(name="songs", description="List all available songs")
+async def songs(interaction: discord.Interaction):
+
+    song_list = sorted(get_songs().keys())
+
+    if not song_list:
+        await interaction.response.send_message(
+            "No songs found in the `music` folder.",
+            ephemeral=True
+        )
+        return
+
+    await interaction.response.send_message(
+        "**Available Songs:**\n" +
+        "\n".join(f"🎵 {song}" for song in song_list)
     )
 
 # ----------------------------
