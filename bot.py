@@ -148,42 +148,49 @@ async def join(interaction: discord.Interaction):
 
     await interaction.followup.send("✅ Joined your voice channel.")
 
-@bot.tree.command(name="play", description="Play a song from the music folder")
+@bot.tree.command(name="play")
 async def play(interaction: discord.Interaction, song: str):
 
+    print("PLAY COMMAND STARTED")
+
     await interaction.response.defer()
+    print("DEFER DONE")
 
-    songs = get_songs()
+    try:
+        songs = get_songs()
 
-    if song not in songs:
-        await interaction.followup.send(
-            "❌ Song not found.\nAvailable songs:\n" +
-            "\n".join(f"• {s}" for s in songs.keys()),
-            ephemeral=True
-        )
-        return
+        print("SONGS LOADED:", songs)
 
-    vc = interaction.guild.voice_client
+        if song not in songs:
+            return await interaction.followup.send("❌ Song not found.")
 
-    if vc is None:
-        if interaction.user.voice is None:
-            await interaction.followup.send(
-                "❌ Join a voice channel first.",
-                ephemeral=True
-            )
-            return
+        vc = interaction.guild.voice_client
+        print("VOICE CLIENT:", vc)
 
-        vc = await interaction.user.voice.channel.connect()
+        if vc is None:
+            if interaction.user.voice is None:
+                return await interaction.followup.send("❌ Join voice first.")
 
-    if vc.is_playing():
-        vc.stop()
+            print("CONNECTING TO VOICE...")
+            vc = await interaction.user.voice.channel.connect()
+            print("CONNECTED")
 
-    source = discord.FFmpegPCMAudio(songs[song]) 
-    executable="ffmpeg"
-    vc.play(source)
+        if vc.is_playing():
+            print("STOPPING OLD AUDIO")
+            vc.stop()
 
-    await interaction.followup.send(f"▶️ Now playing **{song}**")
+        print("STARTING FFPLAY")
 
+        source = discord.FFmpegPCMAudio(songs[song], executable="ffmpeg")
+        vc.play(source)
+
+        print("PLAYING")
+
+        await interaction.followup.send(f"▶️ Playing {song}")
+
+    except Exception as e:
+        print("ERROR IN PLAY:", e)
+        await interaction.followup.send(f"❌ Error: {e}")
 @bot.tree.command(name="stop", description="Stop the current song")
 async def stop(interaction: discord.Interaction):
     vc = interaction.guild.voice_client
